@@ -87,6 +87,6 @@ emcc \
   -s EXPORTED_FUNCTIONS='["_malloc","_free"]' \
   -std=c++17 \
   -O2 \
-  -o ../echoprint.js
+  -o ../docs/echoprint.js
 
 echo "Done: echoprint.js + echoprint.wasm"
