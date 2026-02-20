@@ -27,7 +27,7 @@ It's a ton of json files, but we will just process 1, as an example:
 
 ```sh
 zstd -d 00.jsonl.zst
-python3 build_audio.py audio_analysis.duckdb *.jsonl
+./build_audio.py audio_analysis.duckdb *.jsonl
 ```
 
 This will drop a lot of interesting fields, but it cuts the size way down (to just enough to do song-detection.) Feel free to grab other fields, if you want it.
