@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Build Echoprint inverted index in DuckDB from Spotify audio analysis JSONL files.
 
