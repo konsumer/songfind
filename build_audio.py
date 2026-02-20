@@ -45,10 +45,18 @@ def main():
         n_tracks = 0
         n_codes = 0
 
+        with open(jsonl_file, "rbU") as f:
+            count_all_lines = sum(1 for _ in f)
+
+        count_current_lines = 0
+
         for track_id, ep in con.execute(
             "SELECT meta.track_id, track.echoprintstring FROM read_json_auto(?)",
             [jsonl_file],
         ).fetchall():
+            count_current_lines = count_current_lines + 1
+            print(f"{count_current_lines} / {count_all_lines}")
+            
             try:
                 pairs = decode_ep(ep)
             except Exception as e:
