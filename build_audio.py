@@ -31,6 +31,11 @@ def main():
     jsonl_files = sys.argv[2:]
 
     con = duckdb.connect(db_path)
+
+    # Enable DuckDB's native progress bar
+    con.execute("SET enable_progress_bar = true")
+
+    # Create table with optimized settings
     con.execute("""
         CREATE TABLE IF NOT EXISTS ep_index (
             code     UINTEGER,
@@ -39,27 +44,32 @@ def main():
         )
     """)
 
+    # Optimize for bulk inserts
+    con.execute("SET threads=4")
+    con.execute("SET memory_limit='4GB'")
+
     for jsonl_file in jsonl_files:
-        print(f"Processing {jsonl_file}...")
+        print(f"\nProcessing {jsonl_file}...")
+        print("Reading JSON file...")
+
         rows = []
         n_tracks = 0
         n_codes = 0
+        n_errors = 0
 
-        with open(jsonl_file, "rbU") as f:
-            count_all_lines = sum(1 for _ in f)
-
-        count_current_lines = 0
-
-        for track_id, ep in con.execute(
+        # DuckDB will show progress bar for this query
+        result = con.execute(
             "SELECT meta.track_id, track.echoprintstring FROM read_json_auto(?)",
             [jsonl_file],
-        ).fetchall():
-            count_current_lines = count_current_lines + 1
-            print(f"{count_current_lines} / {count_all_lines}")
-            
+        ).fetchall()
+
+        print(f"Processing {len(result):,} tracks...")
+
+        for i, (track_id, ep) in enumerate(result):
             try:
                 pairs = decode_ep(ep)
             except Exception as e:
+                n_errors += 1
                 print(f"  [warn] {track_id}: {e}")
                 continue
 
@@ -68,18 +78,28 @@ def main():
             n_tracks += 1
             n_codes += len(pairs)
 
+            # Show progress every 10k tracks
+            if (i + 1) % 10000 == 0:
+                print(f"  {n_tracks:,} tracks, {n_codes:,} codes...", end="\r")
+
+            # Batch insert every 1M rows for better performance
             if len(rows) >= 1_000_000:
                 con.executemany("INSERT INTO ep_index VALUES (?, ?, ?)", rows)
                 rows = []
-                print(f"  {n_tracks} tracks, {n_codes:,} codes...", end="\r")
 
+        # Insert remaining rows
         if rows:
             con.executemany("INSERT INTO ep_index VALUES (?, ?, ?)", rows)
 
-        print(f"  {jsonl_file}: {n_tracks} tracks, {n_codes:,} codes        ")
+        print(f"✓ {jsonl_file}: {n_tracks:,} tracks, {n_codes:,} codes" +
+              (f", {n_errors} errors" if n_errors > 0 else ""))
 
-    print("Creating index on code...")
+    print("\nCreating index on code...")
     con.execute("CREATE INDEX IF NOT EXISTS ep_index_code ON ep_index (code)")
+
+    # Show final statistics
+    stats = con.execute("SELECT COUNT(DISTINCT track_id) as tracks, COUNT(*) as codes FROM ep_index").fetchone()
+    print(f"✓ Index complete: {stats[0]:,} unique tracks, {stats[1]:,} total codes")
     print("Done.")
 
 
