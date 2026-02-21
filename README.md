@@ -4,7 +4,7 @@ This is a way to build an song-detection and lookup system from the [Anna'a Arch
 
 There are a few steps, and we are dealing with huge files, so you may need to download a file, process it, delete, and move on (using qtorrent's download options to pull in each file 1-at-a-time, for example.) The basic idea is we are building 2 big duckdb files.
 
-You can get find torrents for this source-data [here](torrents.md).
+You can get find torrents for this source-data [here](torrents/).
 
 ### audio-analysis
 
