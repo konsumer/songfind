@@ -1,18 +1,5 @@
 This is a way to build an song-detection and lookup system from the [Anna'a Archive](https://annas-archive.li/) spotify data-dump. It does not include any proprietary data, itself, but allows you to build a useful interface to it.
 
-## build the WASM fingerprinter
-
-The browser generates Echoprint fingerprints locally using the original C++ algorithm compiled to WebAssembly. Build it once:
-
-```sh
-# requires Emscripten (https://emscripten.org) and Boost headers
-# macOS: brew install emscripten boost
-# Linux: apt install emscripten libboost-dev
-cd echoprint-wasm && ./build.sh
-```
-
-This produces `echoprint.js` + `echoprint.wasm` in the project root, served statically by the server.
-
 ## setup
 
 There are a few steps, and we are dealing with huge files, so you may need to download a file, process it, delete, and move on (using qtorrent's download options to pull in each file 1-at-a-time, for example.) The basic idea is we are building 2 big duckdb files.
@@ -42,3 +29,16 @@ zstd -d spotify_clean.sqlite3.zst
 duckdb meta.duckdb "INSTALL sqlite; LOAD sqlite; ATTACH 'spotify_clean.sqlite3' AS src (TYPE SQLITE); CREATE TABLE album_images AS SELECT * FROM src.album_images; CREATE TABLE artist_genres AS SELECT * FROM src.artist_genres; CREATE TABLE available_markets AS SELECT * FROM src.available_markets; CREATE TABLE albums AS SELECT * FROM src.albums; CREATE TABLE artist_images AS SELECT * FROM src.artist_images; CREATE TABLE track_artists AS SELECT * FROM src.track_artists; CREATE TABLE artist_albums AS SELECT * FROM src.artist_albums; CREATE TABLE artists AS SELECT * FROM src.artists; CREATE TABLE tracks AS SELECT * FROM src.tracks;"
 
 ```
+
+## WASM fingerprinter
+
+The browser generates Echoprint fingerprints locally using the original C++ algorithm compiled to WebAssembly. You should not need to build this yourself. Build it once:
+
+```sh
+# requires Emscripten (https://emscripten.org) and Boost headers
+# macOS: brew install emscripten boost
+# Linux: apt install emscripten libboost-dev
+cd echoprint-wasm && ./build.sh
+```
+
+This produces `echoprint.js` + `echoprint.wasm` in the webroot, served statically by the server.
