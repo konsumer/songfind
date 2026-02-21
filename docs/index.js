@@ -7,30 +7,7 @@ const URL_BACKEND = '/identify'
 const CHUNK_MS = 5000
 const MAX_CHUNKS = 3
 
-// Decode echoprintstring -> array of code integers.
-// Same format as Spotify's pre-computed echoprintstring: zlib + base64url.
-async function decodeCodeString(epStr) {
-  // base64url -> Uint8Array
-  const b64 = epStr.replace(/-/g, '+').replace(/_/g, '/')
-  const padded = b64 + '==='.slice((b64.length + 3) % 4)
-  const binary = atob(padded)
-  const compressed = Uint8Array.from(binary, (c) => c.charCodeAt(0))
-
-  // zlib decompress ('deflate' = RFC 1950, which is what zlib produces)
-  const ds = new DecompressionStream('deflate')
-  const blob = new Blob([compressed])
-  const data = new Uint8Array(await new Response(blob.stream().pipeThrough(ds)).arrayBuffer())
-
-  // parse little-endian (time: uint32, code: uint32) pairs — we only need code
-  const view = new DataView(data.buffer)
-  const codes = []
-  for (let i = 0; i + 7 < data.length; i += 8) {
-    codes.push(view.getUint32(i + 4, true)) // bytes 4-7 = code
-  }
-  return codes
-}
-
-// Fingerprint an AudioBuffer and return an array of Echoprint hash codes.
+// Fingerprint an AudioBuffer and return the raw echoprintstring (base64url + zlib).
 let mod
 export async function fingerprint(audioBuffer) {
   mod ||= await createEchoprint()
@@ -50,12 +27,11 @@ export async function fingerprint(audioBuffer) {
   const ptr = mod._malloc(pcm.length * 4)
   mod.HEAPF32.set(pcm, ptr >> 2)
 
-  // Run Echoprint
+  // Run Echoprint — returns echoprintstring (same format as Spotify's stored value)
   const epStr = mod.computeEchoprint(ptr, pcm.length)
   mod._free(ptr)
 
-  if (!epStr) return []
-  return decodeCodeString(epStr)
+  return epStr || null
 }
 
 /// FRONTEND
@@ -125,11 +101,9 @@ function run() {
           ctx.close()
         }
 
-        const codes = await fingerprint(audioBuffer)
+        const fp = await fingerprint(audioBuffer)
 
-        console.log('codes', codes)
-
-        if (!codes.length) {
+        if (!fp) {
           busy = false
           return
         }
@@ -137,7 +111,7 @@ function run() {
         const data = await fetch(URL_BACKEND, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ codes })
+          body: JSON.stringify({ fingerprint: fp })
         }).then((r) => r.json())
 
         if (data.error) {

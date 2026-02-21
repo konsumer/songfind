@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import duckdb from 'duckdb'
+import { inflateSync } from 'zlib'
 
 const { AUDIO_DB = `${import.meta.dirname}/../audio_analysis.duckdb`, META_DB = `${import.meta.dirname}/../meta.duckdb` } = process.env
 
@@ -23,10 +24,17 @@ app.post('/identify', async (c) => {
       await query(metaConn, ``)
     }
 
-    const { codes } = await c.req.json()
-    if (!Array.isArray(codes) || codes.length === 0) {
-      throw new Error('codes array required')
+    const { fingerprint } = await c.req.json()
+    if (!fingerprint) throw new Error('fingerprint required')
+
+    // Decode echoprintstring: base64url → zlib → (time, code) uint32 pairs
+    const compressed = Buffer.from(fingerprint.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
+    const data = inflateSync(compressed)
+    const codes = []
+    for (let i = 0; i + 7 < data.length; i += 8) {
+      codes.push(data.readUInt32LE(i + 4)) // bytes 4-7 = code
     }
+    if (codes.length === 0) throw new Error('empty fingerprint')
 
     // Find the track whose codes overlap the most with the query
     const [match] = await query(
