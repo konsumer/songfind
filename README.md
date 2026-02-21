@@ -41,4 +41,4 @@ The browser generates Echoprint fingerprints locally using the original C++ algo
 cd echoprint-wasm && ./build.sh
 ```
 
-This produces `echoprint.js` + `echoprint.wasm` in the webroot, served statically by the server.
+This produces `echoprint.mjs` + `echoprint.wasm` in the webroot, served statically by the server.

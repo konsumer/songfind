@@ -78,15 +78,11 @@ emcc \
   -I "$BOOST_INCLUDE" \
   -s USE_ZLIB=1 \
   --bind \
-  -s MODULARIZE=1 \
-  -s EXPORT_NAME="createEchoprint" \
-  -s EXPORT_ES6=1 \
-  -s ENVIRONMENT=web \
   -s ALLOW_MEMORY_GROWTH=1 \
   -s EXPORTED_RUNTIME_METHODS='["HEAPF32"]' \
   -s EXPORTED_FUNCTIONS='["_malloc","_free"]' \
   -std=c++17 \
   -O2 \
-  -o ../docs/echoprint.js
+  -o ../docs/echoprint.mjs
 
-echo "Done: echoprint.js + echoprint.wasm"
+echo "Done: echoprint.mjs + echoprint.wasm"
